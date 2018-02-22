@@ -1,0 +1,100 @@
+
+
+- name: install epel-release (CentOS)
+  yum:
+    name: epel-release
+    state: present
+    update_cache: yes
+
+- name: install python-setuptools (CentOS)
+  yum:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - python-setuptools
+    - libselinux-python
+
+- name: install pip (command)
+  command: easy_install pip
+  args:
+    creates: "/usr/bin/pip"
+
+- name: install supervisor (command)
+  command: easy_install supervisor
+  args:
+    creates: "/usr/bin/supervisord"
+
+- name: mkdir /etc/supervisord.d/
+  file:
+    path: /etc/supervisord.d/
+    state: directory
+    group: root
+    owner: root
+    mode: 0755
+
+# - name: create supervisord.conf
+  # command: echo_supervisord_conf > /etc/supervisord.conf
+
+- name: create supervisord.conf
+  copy:
+    src: supervisord.conf
+    dest: /etc/supervisord.conf
+    group: root
+    owner: root
+    mode: 0644
+  when: custom_supervisor_config is not defined
+
+- block:
+  - name: create /etc/rc.d/init.d/supervisord
+    copy:
+      src: supervisord
+      dest: /etc/rc.d/init.d/supervisord
+      group: root
+      owner: root
+      mode: 0655
+
+  - name: add supervisord
+    command: chkconfig --add supervisord
+    args:
+      creates: /etc/ansible_installed_supervisord
+    register: add_supervisord
+
+  - name: enable supervisord
+    command: chkconfig supervisord on
+    args:
+      creates: /etc/ansible_installed_supervisord
+    register: enable_supervisord
+
+  - name: create /etc/ansible_installed_supervisord
+    file:
+      path: /etc/ansible_installed_supervisord
+      state: touch
+    when: add_supervisord.changed and enable_supervisord.changed
+
+  when: ansible_distribution_major_version == "6"
+
+- block:
+  - name: create /usr/lib/systemd/system/supervisord.service
+    copy:
+      src: supervisord.service
+      dest: /usr/lib/systemd/system/supervisord.service
+      group: root
+      owner: root
+      mode: 0655
+    register: add_supervisord
+
+  - name: enable supervisord (systemctl)
+    command: systemctl enable supervisord
+    args:
+      creates: /etc/ansible_installed_supervisord
+    register: enable_supervisord
+    # when: ansible_virtualization_type != "docker"
+
+  - name: create /etc/ansible_installed_supervisord
+    file:
+      path: /etc/ansible_installed_supervisord
+      state: touch
+    when: add_supervisord.changed and enable_supervisord.changed
+
+  when: ansible_distribution_major_version == "7"

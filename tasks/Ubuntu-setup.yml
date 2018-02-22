@@ -1,0 +1,25 @@
+
+
+
+- block:
+  - name: Set custom /etc/supervisor/supervisord.conf
+    copy:
+      src: "{{ custom_supervisor_config }}"
+      dest: "/etc/supervisor/supervisord.conf"
+      owner: root
+      group: root
+      backup: yes
+    when: custom_supervisor_config is defined
+
+  - name: Set custom process config
+    copy:
+      src: "{{ item.src }}/{{ item.filename }}"
+      dest: "/etc/supervisor/conf.d/{{ item.filename }}"
+      owner: root
+      group: root
+      backup: yes
+    with_items:
+      - "{{ custom_process_config }}"
+    when: custom_process_config is defined
+  tags:
+    - setup
