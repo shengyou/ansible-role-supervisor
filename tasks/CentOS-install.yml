@@ -9,7 +9,7 @@
 - name: install python-setuptools (CentOS)
   yum:
     name: "{{ item }}"
-    state: present
+    state: latest
     update_cache: yes
   with_items:
     - python-setuptools
